@@ -45,3 +45,4 @@ async def status():
 @app.get("/")
 async def index():
     return {"message": "FastAPI is running. Use /transcript and /status endpoints."} 
+
