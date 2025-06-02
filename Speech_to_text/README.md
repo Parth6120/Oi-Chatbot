@@ -1,15 +1,3 @@
-# Oi-Chatbot
-
-Project Name: Oi Chatbot
-
-Group Name: Oi
-
-Main Participant Name: Vishu Dua
-
-Team Participant Names: Parth Patel , Keyur Desai , Shivang Ayar
-
-
-
 # Oi-Chatbot Speech-to-Text System
 
 A modular, real-time speech-to-text (STT) system with speaker diarization, powered by Whisper and resemblyzer, with a FastAPI backend for transcript access and monitoring.
@@ -28,7 +16,7 @@ A modular, real-time speech-to-text (STT) system with speaker diarization, power
 
 ## Directory Structure
 ```
-src/Components/
+src/Speech_to_text/
 ├── stt.py           # Main entry point
 ├── audio.py         # Audio device selection and streaming
 ├── models.py        # Model loading (Whisper, VoiceEncoder)
@@ -46,7 +34,7 @@ src/Components/
 ### 1. **Clone the Repository**
 ```
 git clone <your-repo-url>
-cd <your-repo>/src/Components
+cd <your-repo>/src/Speech_to_text
 ```
 
 ### 2. **Install Dependencies**
@@ -81,7 +69,7 @@ psutil
 
 ## How to Run
 
-From the `src/Components` directory, run:
+From the `src/Speech_to_text` directory, run:
 ```
 python stt.py
 ```
@@ -116,4 +104,4 @@ python stt.py
 ---
 
 ## License
-Specify your license here (e.g., MIT, Apache 2.0, etc.)
+Specify your license here (e.g., MIT, Apache 2.0, etc.) 
