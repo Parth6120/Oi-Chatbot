@@ -34,6 +34,7 @@ def periodic_writer():
                 if write_buffer:
                     with open(speaker_transcript_path, "a", encoding="utf-8") as f1, \
                          open(plain_transcript_path, "a", encoding="utf-8") as f2:
+                        print("loading")
                         for speaker_line, plain_line in write_buffer:
                             f1.write(speaker_line + "\n")
                             f2.write(plain_line + "\n")

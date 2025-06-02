@@ -6,6 +6,8 @@ Main entry point for the Oi-Chatbot Speech-to-Text system.
 - NOTE: This folder was renamed from 'Components' to 'Speech_to_text'.
 """
 
+import numpy as np
+import io
 import threading
 import uvicorn
 from audio import select_input_device, audio_thread
@@ -15,11 +17,24 @@ from transcript import log_transcript, periodic_writer
 from utils import performance_monitor
 from api import app
 import queue
+import time
+from scipy.io.wavfile import write
+from utils import latency_data
 
 # === CONFIG ===
 samplerate = 16000
 blocksize = 16000
 speaker_threshold = 0.55
+
+import torch
+from resemblyzer import VoiceEncoder
+from faster_whisper import WhisperModel
+
+def get_models():
+    device_type = "cuda" if torch.cuda.is_available() else "cpu"
+    encoder = VoiceEncoder().to(device_type)
+    whisper_model = WhisperModel("medium", device=device_type, compute_type="float16" if device_type == "cuda" else "int8")
+    return encoder, whisper_model, device_type 
 
 # === MAIN ENTRY POINT ===
 def process_chunk(audio_frames):
@@ -28,17 +43,31 @@ def process_chunk(audio_frames):
     from scipy.io.wavfile import write
     import time
     from utils import latency_data
-    encoder, whisper_model, _ = get_models()
-    known_speakers = load_known_speakers()
+    from models import get_models
+    from speaker import identify_speaker, load_known_speakers
+    from transcript import log_transcript
+
     start = time.time()
     print("[🧠 Processing audio chunk...]")
+
     full_chunk = np.concatenate(audio_frames)
-    if np.mean(np.abs(full_chunk)) < 0.01:
+    avg_volume = np.mean(np.abs(full_chunk))
+    print(f"[📊 Chunk Stats] Mean volume: {avg_volume:.6f}")
+
+    # Try lowering the threshold if needed
+    if avg_volume < 0.001:
         print("[🔇 Silence skipped]")
         return
+
+    # Convert audio chunk to WAV in memory
     wav_io = io.BytesIO()
-    write(wav_io, samplerate, (full_chunk * 32767).astype(np.int16))
+    write(wav_io, 16000, (full_chunk * 32767).astype(np.int16))
     wav_io.seek(0)
+
+    # Load models locally to avoid scope issues
+    encoder, whisper_model, _ = get_models()
+    known_speakers = load_known_speakers()
+
     try:
         segments, _ = whisper_model.transcribe(
             wav_io,
@@ -46,16 +75,19 @@ def process_chunk(audio_frames):
             vad_parameters={"threshold": 0.6, "min_silence_duration_ms": 300}
         )
         print("[🔍 Raw Whisper Output]:", segments)
+
         for segment in segments:
             text = segment.text.strip()
             if text:
                 print(f"[📄 Transcribed] {text}")
-                speaker = identify_speaker(audio_frames, encoder, known_speakers, speaker_threshold, samplerate)
+                speaker = identify_speaker(audio_frames, encoder, known_speakers, 0.55, 16000)
                 log_transcript(speaker, text)
     except Exception as e:
         print(f"[❌ Whisper Error] {e}")
+
     end = time.time()
     latency_data.append(end - start)
+
 
 def start_background_tasks():
     q = queue.Queue()

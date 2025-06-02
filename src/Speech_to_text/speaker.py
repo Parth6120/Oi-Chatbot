@@ -4,9 +4,34 @@ from sklearn.cluster import AgglomerativeClustering
 from collections import deque
 import pickle
 import os
+import threading
+from concurrent.futures import ThreadPoolExecutor
+import queue
 
 speaker_embedding_history = deque(maxlen=10)
 
+samplerate = 16000
+blocksize = 16000
+speaker_threshold = 0.55
+MAX_TRANSCRIPT_LINES = 10000
+
+known_speakers = {}
+try:
+    if os.path.exists("known_speakers.pkl"):
+        with open("known_speakers.pkl", "rb") as f:
+            known_speakers = pickle.load(f)
+except Exception as e:
+    print(f"[⚠️ Failed to load known_speakers.pkl] {e}. Regenerating...")
+    known_speakers = {}
+
+recent_predictions = []
+q = queue.Queue()
+transcript_lines_speaker = deque(maxlen=MAX_TRANSCRIPT_LINES)
+transcript_lines_plain = deque(maxlen=MAX_TRANSCRIPT_LINES)
+transcript_lock = threading.Lock()
+write_buffer = []
+executor = ThreadPoolExecutor(max_workers=2)
+latency_data = deque(maxlen=100)
 
 def cluster_speakers():
     if len(speaker_embedding_history) < 5:
